@@ -9,6 +9,247 @@ const AppState = {
     }
 };
 
+// Credenciais de login
+const LOGIN_CREDENTIALS = {
+    user: 'Admin',
+    password: 'Administracao@1'
+};
+
+// Gerenciador de Login
+const LoginManager = {
+    inactivityTimer: null,
+    INACTIVITY_TIMEOUT: 3600000, // 1 hora (3600000 ms)
+
+    init() {
+        this.setupEventListeners();
+        this.checkSession();
+    },
+
+    setupEventListeners() {
+        const loginForm = document.getElementById('loginForm');
+        const passwordToggle = document.getElementById('passwordToggle');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLogin();
+        });
+
+        passwordToggle.addEventListener('click', () => {
+            this.togglePasswordVisibility();
+        });
+
+        // Limpar erro ao digitar
+        document.getElementById('loginUser').addEventListener('input', () => {
+            this.hideError();
+        });
+        document.getElementById('loginPassword').addEventListener('input', () => {
+            this.hideError();
+        });
+
+        // Botão de logout
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                this.logout();
+            });
+        }
+    },
+
+    checkSession() {
+        const isLoggedIn = sessionStorage.getItem('setorTI_logged');
+        if (isLoggedIn === 'true') {
+            this.showApp();
+        }
+    },
+
+    handleLogin() {
+        const user = document.getElementById('loginUser').value.trim();
+        const password = document.getElementById('loginPassword').value;
+
+        const userCorrect = user === LOGIN_CREDENTIALS.user;
+        const passwordCorrect = password === LOGIN_CREDENTIALS.password;
+
+        if (userCorrect && passwordCorrect) {
+            sessionStorage.setItem('setorTI_logged', 'true');
+            this.showApp();
+            Toast.show('Login realizado com sucesso!', 'success');
+        } else {
+            let message = '';
+            if (!userCorrect && !passwordCorrect) {
+                message = 'O usuário e senha estão errados!!';
+            } else if (!userCorrect) {
+                message = 'O usuário está errado!!';
+            } else {
+                message = 'A senha está errada!!';
+            }
+            this.showError(message);
+        }
+    },
+
+    logout() {
+        sessionStorage.removeItem('setorTI_logged');
+        if (this.inactivityTimer) {
+            clearTimeout(this.inactivityTimer);
+        }
+        
+        const loginScreen = document.getElementById('loginScreen');
+        const appContainer = document.getElementById('appContainer');
+        
+        appContainer.style.display = 'none';
+        loginScreen.style.display = 'flex';
+        
+        // Limpar formulário de login
+        document.getElementById('loginForm').reset();
+        this.hideError();
+        
+        Toast.show('Logout realizado com sucesso!', 'info');
+    },
+
+    resetInactivityTimer() {
+        if (this.inactivityTimer) {
+            clearTimeout(this.inactivityTimer);
+        }
+        
+        this.inactivityTimer = setTimeout(() => {
+            Toast.show('Sessão expirada por inatividade!', 'info');
+            this.logout();
+        }, this.INACTIVITY_TIMEOUT);
+    },
+
+    showError(message) {
+        const errorEl = document.getElementById('loginError');
+        const messageEl = document.getElementById('loginErrorMessage');
+        
+        if (message) {
+            messageEl.textContent = message;
+        }
+        
+        errorEl.classList.add('visible');
+        
+        // Animar o erro
+        errorEl.style.animation = 'none';
+        errorEl.offsetHeight; // Trigger reflow
+        errorEl.style.animation = 'shake 0.3s ease';
+    },
+
+    hideError() {
+        const errorEl = document.getElementById('loginError');
+        errorEl.classList.remove('visible');
+    },
+
+    togglePasswordVisibility() {
+        const passwordInput = document.getElementById('loginPassword');
+        const toggleBtn = document.getElementById('passwordToggle');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+        } else {
+            passwordInput.type = 'password';
+            toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        }
+    },
+
+    showApp() {
+        const loginScreen = document.getElementById('loginScreen');
+        const appContainer = document.getElementById('appContainer');
+        
+        loginScreen.style.display = 'none';
+        appContainer.style.display = 'flex';
+        
+        // Iniciar timer de inatividade
+        this.resetInactivityTimer();
+        
+        // Resetar timer em qualquer atividade do usuário
+        const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+        activityEvents.forEach(event => {
+            document.addEventListener(event, () => this.resetInactivityTimer(), { passive: true });
+        });
+        
+        // Inicializar o aplicativo
+        this.initializeApp();
+    },
+
+    initializeApp() {
+        // Carregar dados
+        StorageManager.load();
+        
+        // Limpar serviços e estoque, mantendo apenas os códigos
+        AppState.services = [];
+        AppState.inventory = [];
+        AppState.inventoryActivities = [];
+        AppState.servicesActivities = [];
+        
+        // Carregar apenas os códigos se necessário
+        if (AppState.snippets.length === 0 || AppState.snippets.length < 30) {
+            // Carregar os 30 códigos padrão
+            AppState.snippets = [
+                { id: '1', title: 'Limpar Cache DNS', category: 'rede', type: 'cmd', tags: 'dns, cache, rede', description: 'Limpa o cache de DNS do Windows', code: 'ipconfig /flushdns', createdAt: new Date().toISOString() },
+                { id: '2', title: 'Verificar Integridade do Sistema', category: 'sistema', type: 'cmd', tags: 'sistema, reparo, sfc', description: 'Verifica e repara arquivos do sistema Windows', code: 'sfc /scannow', createdAt: new Date().toISOString() },
+                { id: '3', title: 'Listar Processos', category: 'sistema', type: 'powershell', tags: 'processos, sistema', description: 'Lista processos em execução ordenados por memória', code: 'Get-Process | Sort-Object WS -Descending | Select-Object -First 10 Name, Id, WS, CPU', createdAt: new Date().toISOString() },
+                { id: '4', title: 'Resetar Configurações de Rede', category: 'rede', type: 'batch', tags: 'rede, reset, tcp', description: 'Script para resetar configurações de rede', code: '@echo off\nipconfig /release\nipconfig /renew\nipconfig /flushdns\nnetsh winsock reset\nnetsh int ip reset\necho Concluido!\npause', createdAt: new Date().toISOString() },
+                { id: '5', title: 'Verificar Espaço em Disco', category: 'sistema', type: 'cmd', tags: 'disco, espaço', description: 'Mostra espaço disponível em disco', code: 'wmic logicaldisk get size,freespace,caption', createdAt: new Date().toISOString() },
+                { id: '6', title: 'Liberar IP', category: 'rede', type: 'cmd', tags: 'ip, rede, dhcp', description: 'Libera e renova endereço IP', code: 'ipconfig /release\nipconfig /renew', createdAt: new Date().toISOString() },
+                { id: '7', title: 'Verificar Drivers de Impressora', category: 'impressora', type: 'powershell', tags: 'impressora, driver', description: 'Lista drivers de impressora instalados', code: 'Get-PrinterDriver | Select-Object Name, Manufacturer, Version', createdAt: new Date().toISOString() },
+                { id: '8', title: 'Limpar Fila de Impressão', category: 'impressora', type: 'batch', tags: 'impressora, fila, spooler', description: 'Para e reinicia o spooler de impressão', code: 'net stop spooler\ndel /Q /F %systemroot%\\System32\\spool\\printers\\*\nnet start spooler\necho Fila de impressao limpa!\npause', createdAt: new Date().toISOString() },
+                { id: '9', title: 'Testar Conexão de Rede', category: 'rede', type: 'cmd', tags: 'rede, ping, teste', description: 'Testa conectividade de rede', code: 'ping 8.8.8.8 -n 4\nping google.com -n 4', createdAt: new Date().toISOString() },
+                { id: '10', title: 'Verificar Temperatura do Sistema', category: 'sistema', type: 'powershell', tags: 'temperatura, hardware', description: 'Verifica temperatura do processador', code: 'Get-WmiObject MSAcpi_ThermalZoneTemperature -Namespace "root/wmi" | ForEach-Object { $temp = ($_.CurrentTemperature - 2732) / 10; Write-Host "Temperatura: $temp °C" }', createdAt: new Date().toISOString() },
+                { id: '11', title: 'Configurar Impressora Padrão', category: 'impressora', type: 'powershell', tags: 'impressora, padrao', description: 'Define impressora como padrão', code: 'Get-Printer -Name "Nome da Impressora" | Set-Printer -Shared $true', createdAt: new Date().toISOString() },
+                { id: '12', title: 'Verificar Portas de Rede', category: 'rede', type: 'cmd', tags: 'portas, rede, netstat', description: 'Lista portas de rede abertas', code: 'netstat -an | findstr LISTENING', createdAt: new Date().toISOString() },
+                { id: '13', title: 'Reparar Imagem do Windows', category: 'sistema', type: 'cmd', tags: 'sistema, dism, reparo', description: 'Repara imagem do Windows usando DISM', code: 'DISM /Online /Cleanup-Image /RestoreHealth', createdAt: new Date().toISOString() },
+                { id: '14', title: 'Listar Serviços do Windows', category: 'sistema', type: 'cmd', tags: 'servicos, sistema', description: 'Lista todos os serviços do Windows', code: 'sc query type= service state= all', createdAt: new Date().toISOString() },
+                { id: '15', title: 'Verificar Ativação do Windows', category: 'sistema', type: 'cmd', tags: 'ativacao, windows, licença', description: 'Verifica status de ativação do Windows', code: 'slmgr /xpr', createdAt: new Date().toISOString() },
+                { id: '16', title: 'Reiniciar Spooler de Impressão', category: 'impressora', type: 'cmd', tags: 'impressora, spooler, reiniciar', description: 'Reinicia o serviço de spooler', code: 'net stop spooler\nnet start spooler', createdAt: new Date().toISOString() },
+                { id: '17', title: 'Listar Impressoras Instaladas', category: 'impressora', type: 'cmd', tags: 'impressora, listar', description: 'Lista todas as impressoras instaladas', code: 'wmic printer get name,portname', createdAt: new Date().toISOString() },
+                { id: '18', title: 'Testar Porta de Impressora', category: 'impressora', type: 'powershell', tags: 'impressora, porta, teste', description: 'Testa conectividade com porta de impressora', code: 'Test-NetConnection -ComputerName 192.168.1.100 -Port 9100', createdAt: new Date().toISOString() },
+                { id: '19', title: 'Verificar Tabela de Roteamento', category: 'rede', type: 'cmd', tags: 'rede, rota, tabela', description: 'Mostra tabela de roteamento do Windows', code: 'route print', createdAt: new Date().toISOString() },
+                { id: '20', title: 'Liberar e Renovar IP Completo', category: 'rede', type: 'batch', tags: 'ip, dhcp, rede', description: 'Script completo para renovar IP', code: '@echo off\necho Liberando IP...\nipconfig /release\necho Renovando IP...\nipconfig /renew\necho Limpando DNS...\nipconfig /flushdns\necho Concluido!\npause', createdAt: new Date().toISOString() },
+                { id: '21', title: 'Verificar Adaptadores de Rede', category: 'rede', type: 'cmd', tags: 'rede, adaptador, placa', description: 'Mostra todas as interfaces de rede', code: 'ipconfig /all', createdAt: new Date().toISOString() },
+                { id: '22', title: 'Limpar Arquivos Temporários', category: 'sistema', type: 'batch', tags: 'limpeza, temporario, disco', description: 'Limpa arquivos temporários do sistema', code: '@echo off\ndel /q /f %temp%\\*\nrd /s /q %temp%\necho Arquivos temporarios limpos!\npause', createdAt: new Date().toISOString() },
+                { id: '23', title: 'Verificar Uso de Disco', category: 'sistema', type: 'powershell', tags: 'disco, uso, armazenamento', description: 'Mostra uso de espaço em disco', code: 'Get-WmiObject -Class Win32_LogicalDisk | Select-Object DeviceID, @{Name="Size(GB)";Expression={[math]::Round($_.Size/1GB,2)}}, @{Name="Free(GB)";Expression={[math]::Round($_.FreeSpace/1GB,2)}}', createdAt: new Date().toISOString() },
+                { id: '24', title: 'Resetar Pilha TCP/IP', category: 'rede', type: 'cmd', tags: 'rede, tcp/ip, reset', description: 'Reseta configurações TCP/IP', code: 'netsh int ip reset\nnetsh winsock reset', createdAt: new Date().toISOString() },
+                { id: '25', title: 'Verificar Eventos de Erro', category: 'sistema', type: 'powershell', tags: 'evento, erro, log', description: 'Lista últimos erros do sistema', code: 'Get-EventLog -LogName System -EntryType Error -Newest 10 | Format-Table TimeGenerated, Source, Message -AutoSize', createdAt: new Date().toISOString() },
+                { id: '26', title: 'Testar Velocidade de Rede', category: 'rede', type: 'powershell', tags: 'rede, velocidade, teste', description: 'Testa latência de rede', code: 'Measure-Command { ping -n 10 8.8.8.8 }', createdAt: new Date().toISOString() },
+                { id: '27', title: 'Remover Impressora por Nome', category: 'impressora', type: 'powershell', tags: 'impressora, remover, excluir', description: 'Remove impressora específica', code: 'Remove-Printer -Name "Nome da Impressora"', createdAt: new Date().toISOString() },
+                { id: '28', title: 'Verificar Memória RAM', category: 'sistema', type: 'cmd', tags: 'memoria, ram, hardware', description: 'Mostra informações da memória RAM', code: 'wmic memorychip get capacity,speed,manufacturer', createdAt: new Date().toISOString() },
+                { id: '29', title: 'Mapear Unidade de Rede', category: 'rede', type: 'cmd', tags: 'rede, mapear, unidade', description: 'Mapeia pasta de rede como unidade', code: 'net use Z: \\\\servidor\\pasta /persistent:yes', createdAt: new Date().toISOString() },
+                { id: '30', title: 'Verificar Saúde do Disco', category: 'sistema', type: 'powershell', tags: 'disco, saude, smart', description: 'Verifica saúde do disco via SMART', code: 'Get-PhysicalDisk | Select-Object FriendlyName, HealthStatus, OperationalStatus', createdAt: new Date().toISOString() }
+            ];
+        }
+        
+        StorageManager.save();
+
+        const themeToggle = document.getElementById('themeToggle');
+        
+        if (AppState.settings.theme === 'light') {
+            themeToggle.checked = true;
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+
+        themeToggle.addEventListener('change', () => {
+            if (themeToggle.checked) {
+                document.documentElement.setAttribute('data-theme', 'light');
+                AppState.settings.theme = 'light';
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                AppState.settings.theme = 'dark';
+            }
+            StorageManager.save();
+        });
+
+        Navigation.init();
+        Dashboard.update();
+        Dashboard.setupQuickActions();
+        Inventory.init();
+        Snippets.init();
+        Services.init();
+        ActivityLogger.renderInventory();
+        ActivityLogger.renderServices();
+
+        console.log('Setor de TI initialized successfully!');
+    }
+};
+
 const StorageManager = {
     save() {
         try {
@@ -849,81 +1090,8 @@ const SampleData = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    StorageManager.load();
-    
-    // Limpar serviços e estoque, mantendo apenas os códigos
-    AppState.services = [];
-    AppState.inventory = [];
-    AppState.inventoryActivities = [];
-    AppState.servicesActivities = [];
-    
-    // Carregar apenas os códigos se necessário
-    if (AppState.snippets.length === 0 || AppState.snippets.length < 30) {
-        // Carregar os 30 códigos padrão
-        AppState.snippets = [
-            { id: '1', title: 'Limpar Cache DNS', category: 'rede', type: 'cmd', tags: 'dns, cache, rede', description: 'Limpa o cache de DNS do Windows', code: 'ipconfig /flushdns', createdAt: new Date().toISOString() },
-            { id: '2', title: 'Verificar Integridade do Sistema', category: 'sistema', type: 'cmd', tags: 'sistema, reparo, sfc', description: 'Verifica e repara arquivos do sistema Windows', code: 'sfc /scannow', createdAt: new Date().toISOString() },
-            { id: '3', title: 'Listar Processos', category: 'sistema', type: 'powershell', tags: 'processos, sistema', description: 'Lista processos em execução ordenados por memória', code: 'Get-Process | Sort-Object WS -Descending | Select-Object -First 10 Name, Id, WS, CPU', createdAt: new Date().toISOString() },
-            { id: '4', title: 'Resetar Configurações de Rede', category: 'rede', type: 'batch', tags: 'rede, reset, tcp', description: 'Script para resetar configurações de rede', code: '@echo off\nipconfig /release\nipconfig /renew\nipconfig /flushdns\nnetsh winsock reset\nnetsh int ip reset\necho Concluido!\npause', createdAt: new Date().toISOString() },
-            { id: '5', title: 'Verificar Espaço em Disco', category: 'sistema', type: 'cmd', tags: 'disco, espaço', description: 'Mostra espaço disponível em disco', code: 'wmic logicaldisk get size,freespace,caption', createdAt: new Date().toISOString() },
-            { id: '6', title: 'Liberar IP', category: 'rede', type: 'cmd', tags: 'ip, rede, dhcp', description: 'Libera e renova endereço IP', code: 'ipconfig /release\nipconfig /renew', createdAt: new Date().toISOString() },
-            { id: '7', title: 'Verificar Drivers de Impressora', category: 'impressora', type: 'powershell', tags: 'impressora, driver', description: 'Lista drivers de impressora instalados', code: 'Get-PrinterDriver | Select-Object Name, Manufacturer, Version', createdAt: new Date().toISOString() },
-            { id: '8', title: 'Limpar Fila de Impressão', category: 'impressora', type: 'batch', tags: 'impressora, fila, spooler', description: 'Para e reinicia o spooler de impressão', code: 'net stop spooler\ndel /Q /F %systemroot%\\System32\\spool\\printers\\*\nnet start spooler\necho Fila de impressao limpa!\npause', createdAt: new Date().toISOString() },
-            { id: '9', title: 'Testar Conexão de Rede', category: 'rede', type: 'cmd', tags: 'rede, ping, teste', description: 'Testa conectividade de rede', code: 'ping 8.8.8.8 -n 4\nping google.com -n 4', createdAt: new Date().toISOString() },
-            { id: '10', title: 'Verificar Temperatura do Sistema', category: 'sistema', type: 'powershell', tags: 'temperatura, hardware', description: 'Verifica temperatura do processador', code: 'Get-WmiObject MSAcpi_ThermalZoneTemperature -Namespace "root/wmi" | ForEach-Object { $temp = ($_.CurrentTemperature - 2732) / 10; Write-Host "Temperatura: $temp °C" }', createdAt: new Date().toISOString() },
-            { id: '11', title: 'Configurar Impressora Padrão', category: 'impressora', type: 'powershell', tags: 'impressora, padrao', description: 'Define impressora como padrão', code: 'Get-Printer -Name "Nome da Impressora" | Set-Printer -Shared $true', createdAt: new Date().toISOString() },
-            { id: '12', title: 'Verificar Portas de Rede', category: 'rede', type: 'cmd', tags: 'portas, rede, netstat', description: 'Lista portas de rede abertas', code: 'netstat -an | findstr LISTENING', createdAt: new Date().toISOString() },
-            { id: '13', title: 'Reparar Imagem do Windows', category: 'sistema', type: 'cmd', tags: 'sistema, dism, reparo', description: 'Repara imagem do Windows usando DISM', code: 'DISM /Online /Cleanup-Image /RestoreHealth', createdAt: new Date().toISOString() },
-            { id: '14', title: 'Listar Serviços do Windows', category: 'sistema', type: 'cmd', tags: 'servicos, sistema', description: 'Lista todos os serviços do Windows', code: 'sc query type= service state= all', createdAt: new Date().toISOString() },
-            { id: '15', title: 'Verificar Ativação do Windows', category: 'sistema', type: 'cmd', tags: 'ativacao, windows, licença', description: 'Verifica status de ativação do Windows', code: 'slmgr /xpr', createdAt: new Date().toISOString() },
-            { id: '16', title: 'Reiniciar Spooler de Impressão', category: 'impressora', type: 'cmd', tags: 'impressora, spooler, reiniciar', description: 'Reinicia o serviço de spooler', code: 'net stop spooler\nnet start spooler', createdAt: new Date().toISOString() },
-            { id: '17', title: 'Listar Impressoras Instaladas', category: 'impressora', type: 'cmd', tags: 'impressora, listar', description: 'Lista todas as impressoras instaladas', code: 'wmic printer get name,portname', createdAt: new Date().toISOString() },
-            { id: '18', title: 'Testar Porta de Impressora', category: 'impressora', type: 'powershell', tags: 'impressora, porta, teste', description: 'Testa conectividade com porta de impressora', code: 'Test-NetConnection -ComputerName 192.168.1.100 -Port 9100', createdAt: new Date().toISOString() },
-            { id: '19', title: 'Verificar Tabela de Roteamento', category: 'rede', type: 'cmd', tags: 'rede, rota, tabela', description: 'Mostra tabela de roteamento do Windows', code: 'route print', createdAt: new Date().toISOString() },
-            { id: '20', title: 'Liberar e Renovar IP Completo', category: 'rede', type: 'batch', tags: 'ip, dhcp, rede', description: 'Script completo para renovar IP', code: '@echo off\necho Liberando IP...\nipconfig /release\necho Renovando IP...\nipconfig /renew\necho Limpando DNS...\nipconfig /flushdns\necho Concluido!\npause', createdAt: new Date().toISOString() },
-            { id: '21', title: 'Verificar Adaptadores de Rede', category: 'rede', type: 'cmd', tags: 'rede, adaptador, placa', description: 'Mostra todas as interfaces de rede', code: 'ipconfig /all', createdAt: new Date().toISOString() },
-            { id: '22', title: 'Limpar Arquivos Temporários', category: 'sistema', type: 'batch', tags: 'limpeza, temporario, disco', description: 'Limpa arquivos temporários do sistema', code: '@echo off\ndel /q /f %temp%\\*\nrd /s /q %temp%\necho Arquivos temporarios limpos!\npause', createdAt: new Date().toISOString() },
-            { id: '23', title: 'Verificar Uso de Disco', category: 'sistema', type: 'powershell', tags: 'disco, uso, armazenamento', description: 'Mostra uso de espaço em disco', code: 'Get-WmiObject -Class Win32_LogicalDisk | Select-Object DeviceID, @{Name="Size(GB)";Expression={[math]::Round($_.Size/1GB,2)}}, @{Name="Free(GB)";Expression={[math]::Round($_.FreeSpace/1GB,2)}}', createdAt: new Date().toISOString() },
-            { id: '24', title: 'Resetar Pilha TCP/IP', category: 'rede', type: 'cmd', tags: 'rede, tcp/ip, reset', description: 'Reseta configurações TCP/IP', code: 'netsh int ip reset\nnetsh winsock reset', createdAt: new Date().toISOString() },
-            { id: '25', title: 'Verificar Eventos de Erro', category: 'sistema', type: 'powershell', tags: 'evento, erro, log', description: 'Lista últimos erros do sistema', code: 'Get-EventLog -LogName System -EntryType Error -Newest 10 | Format-Table TimeGenerated, Source, Message -AutoSize', createdAt: new Date().toISOString() },
-            { id: '26', title: 'Testar Velocidade de Rede', category: 'rede', type: 'powershell', tags: 'rede, velocidade, teste', description: 'Testa latência de rede', code: 'Measure-Command { ping -n 10 8.8.8.8 }', createdAt: new Date().toISOString() },
-            { id: '27', title: 'Remover Impressora por Nome', category: 'impressora', type: 'powershell', tags: 'impressora, remover, excluir', description: 'Remove impressora específica', code: 'Remove-Printer -Name "Nome da Impressora"', createdAt: new Date().toISOString() },
-            { id: '28', title: 'Verificar Memória RAM', category: 'sistema', type: 'cmd', tags: 'memoria, ram, hardware', description: 'Mostra informações da memória RAM', code: 'wmic memorychip get capacity,speed,manufacturer', createdAt: new Date().toISOString() },
-            { id: '29', title: 'Mapear Unidade de Rede', category: 'rede', type: 'cmd', tags: 'rede, mapear, unidade', description: 'Mapeia pasta de rede como unidade', code: 'net use Z: \\\\servidor\\pasta /persistent:yes', createdAt: new Date().toISOString() },
-            { id: '30', title: 'Verificar Saúde do Disco', category: 'sistema', type: 'powershell', tags: 'disco, saude, smart', description: 'Verifica saúde do disco via SMART', code: 'Get-PhysicalDisk | Select-Object FriendlyName, HealthStatus, OperationalStatus', createdAt: new Date().toISOString() }
-        ];
-    }
-    
-    StorageManager.save();
-
-    const themeToggle = document.getElementById('themeToggle');
-    
-    if (AppState.settings.theme === 'light') {
-        themeToggle.checked = true;
-        document.documentElement.setAttribute('data-theme', 'light');
-    }
-
-    themeToggle.addEventListener('change', () => {
-        if (themeToggle.checked) {
-            document.documentElement.setAttribute('data-theme', 'light');
-            AppState.settings.theme = 'light';
-        } else {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            AppState.settings.theme = 'dark';
-        }
-        StorageManager.save();
-    });
-
-    Navigation.init();
-    Dashboard.update();
-    Dashboard.setupQuickActions();
-    Inventory.init();
-    Snippets.init();
-    Services.init();
-    ActivityLogger.renderInventory();
-    ActivityLogger.renderServices();
-
-    console.log('Setor de TI initialized successfully!');
+    // Inicializar sistema de login
+    LoginManager.init();
 });
 
 const Navigation = {
