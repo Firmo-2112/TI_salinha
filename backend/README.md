@@ -67,11 +67,6 @@ O banco de dados SQLite é criado automaticamente na primeira execução. As tab
 - `GET /api/settings` - Obter configurações
 - `PUT /api/settings` - Atualizar configurações
 
-## Credenciais Padrão
-
-- **Usuário**: Admin
-- **Senha**: Administracao@1
-
 ## Notas
 
 - O banco de dados é criado automaticamente em `database.sqlite`
