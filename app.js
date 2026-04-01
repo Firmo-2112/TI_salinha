@@ -10,194 +10,12 @@ const AppState = {
     servicesActivities: [],  // Histórico de atividades dos serviços
     settings: {
         theme: 'dark'        // Tema atual (dark/light)
-    },
-    token: null              // Token JWT para autenticação na API
-};
-
-// ==========================================
-// CONFIGURAÇÃO DA API
-// ==========================================
-// URL base da API backend (ajuste se necessário)
-const API_BASE_URL = 'http://localhost:5500/api';
-
-// ==========================================
-// GERENCIADOR DE API
-// ==========================================
-// Objeto responsável por todas as comunicações com o backend
-const API = {
-    // Define o token de autenticação para as requisições
-    setAuthHeader(headers) {
-        if (AppState.token) {
-            headers['Authorization'] = 'Bearer ' + AppState.token;
-        }
-        return headers;
-    },
-
-    // Faz uma requisição HTTP para a API
-    async request(endpoint, options = {}) {
-        const url = API_BASE_URL + endpoint;
-        const headers = this.setAuthHeader(options.headers || {});
-        headers['Content-Type'] = 'application/json';
-
-        try {
-            const response = await fetch(url, { ...options, headers });
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Erro na requisição');
-            }
-            
-            return data;
-        } catch (error) {
-            console.error('Erro na API:', error);
-            throw error;
-        }
-    },
-
-    // ==========================================
-    // MÉTODOS DE AUTENTICAÇÃO
-    // ==========================================
-    
-    // Realiza login na API
-    async login(username, password) {
-        const data = await this.request('/login', {
-            method: 'POST',
-            body: JSON.stringify({ username, password })
-        });
-        AppState.token = data.token;
-        return data;
-    },
-
-    // ==========================================
-    // MÉTODOS DE INVENTÁRIO
-    // ==========================================
-    
-    // Busca todos os items do estoque na API
-    async getInventory() {
-        return await this.request('/inventory');
-    },
-
-    // Adiciona um novo item ao estoque via API
-    async addInventoryItem(item) {
-        return await this.request('/inventory', {
-            method: 'POST',
-            body: JSON.stringify(item)
-        });
-    },
-
-    // Atualiza um item existente no estoque via API
-    async updateInventoryItem(id, item) {
-        return await this.request('/inventory/' + id, {
-            method: 'PUT',
-            body: JSON.stringify(item)
-        });
-    },
-
-    // Exclui um item do estoque via API
-    async deleteInventoryItem(id) {
-        return await this.request('/inventory/' + id, { method: 'DELETE' });
-    },
-
-    // ==========================================
-    // MÉTODOS DE SNIPPETS (CÓDIGOS)
-    // ==========================================
-    
-    // Busca todos os snippets na API
-    async getSnippets() {
-        return await this.request('/snippets');
-    },
-
-    // Adiciona um novo snippet via API
-    async addSnippet(snippet) {
-        return await this.request('/snippets', {
-            method: 'POST',
-            body: JSON.stringify(snippet)
-        });
-    },
-
-    // Atualiza um snippet existente via API
-    async updateSnippet(id, snippet) {
-        return await this.request('/snippets/' + id, {
-            method: 'PUT',
-            body: JSON.stringify(snippet)
-        });
-    },
-
-    // Exclui um snippet via API
-    async deleteSnippet(id) {
-        return await this.request('/snippets/' + id, { method: 'DELETE' });
-    },
-
-    // ==========================================
-    // MÉTODOS DE SERVIÇOS
-    // ==========================================
-    
-    // Busca todos os serviços na API
-    async getServices() {
-        return await this.request('/services');
-    },
-
-    // Adiciona um novo serviço via API
-    async addService(service) {
-        return await this.request('/services', {
-            method: 'POST',
-            body: JSON.stringify(service)
-        });
-    },
-
-    // Atualiza um serviço existente via API
-    async updateService(id, service) {
-        return await this.request('/services/' + id, {
-            method: 'PUT',
-            body: JSON.stringify(service)
-        });
-    },
-
-    // Marca um serviço como concluído via API
-    async completeService(id) {
-        return await this.request('/services/' + id + '/complete', {
-            method: 'PATCH'
-        });
-    },
-
-    // Exclui um serviço via API
-    async deleteService(id) {
-        return await this.request('/services/' + id, { method: 'DELETE' });
-    },
-
-    // ==========================================
-    // MÉTODOS DE ATIVIDADES
-    // ==========================================
-    
-    // Busca atividades do inventário na API
-    async getInventoryActivities() {
-        return await this.request('/activities/inventory');
-    },
-
-    // Busca atividades dos serviços na API
-    async getServicesActivities() {
-        return await this.request('/activities/services');
-    },
-
-    // ==========================================
-    // MÉTODOS DE CONFIGURAÇÕES
-    // ==========================================
-    
-    // Busca configurações na API
-    async getSettings() {
-        return await this.request('/settings');
-    },
-
-    // Salva configurações na API
-    async saveSettings(settings) {
-        return await this.request('/settings', {
-            method: 'PUT',
-            body: JSON.stringify(settings)
-        });
     }
 };
 
-// Gerenciador de Login
+// ==========================================
+// GERENCIADOR DE LOGIN
+// ==========================================
 const LoginManager = {
     inactivityTimer: null,
     INACTIVITY_TIMEOUT: 3600000, // 1 hora (3600000 ms)
@@ -244,42 +62,29 @@ const LoginManager = {
         }
     },
 
-    async handleLogin() {
+    handleLogin() {
         const user = document.getElementById('loginUser').value.trim();
         const password = document.getElementById('loginPassword').value;
 
-        try {
-            // Tentar login via API primeiro
-            const data = await API.login(user, password);
-            
-            // Login bem-sucedido via API
+        const userCorrect = user === 'Admin';
+        const passwordCorrect = password === 'Administracao@1';
+
+        if (userCorrect && passwordCorrect) {
             sessionStorage.setItem('setorTI_logged', 'true');
             this.showApp();
             Toast.show('Login realizado com sucesso!', 'success');
-        } catch (error) {
-            // Se API não estiver disponível, tentar login local
-            console.warn('API não disponível, tentando login local:', error.message);
+        } else {
+            let message = 'Usuário ou senha inválidos!';
             
-            const userCorrect = user === 'Admin';
-            const passwordCorrect = password === 'Administracao@1';
-
-            if (userCorrect && passwordCorrect) {
-                sessionStorage.setItem('setorTI_logged', 'true');
-                this.showApp();
-                Toast.show('Login local realizado com sucesso!', 'success');
+            if (!userCorrect && !passwordCorrect) {
+                message = 'O usuário e senha estão errados!!';
+            } else if (!userCorrect) {
+                message = 'O usuário está errado!!';
             } else {
-                let message = 'Usuário ou senha inválidos!';
-                
-                if (!userCorrect && !passwordCorrect) {
-                    message = 'O usuário e senha estão errados!!';
-                } else if (!userCorrect) {
-                    message = 'O usuário está errado!!';
-                } else {
-                    message = 'A senha está errada!!';
-                }
-                
-                this.showError(message);
+                message = 'A senha está errada!!';
             }
+            
+            this.showError(message);
         }
     },
 
@@ -367,44 +172,12 @@ const LoginManager = {
         this.initializeApp();
     },
 
-    async initializeApp() {
-        // Carregar dados da API
-        try {
-            // Carregar inventário da API
-            AppState.inventory = await API.getInventory();
-            
-            // Carregar snippets da API
-            AppState.snippets = await API.getSnippets();
-            
-            // Carregar serviços da API
-            AppState.services = await API.getServices();
-            
-            // Carregar atividades da API
-            const inventoryActivities = await API.getInventoryActivities();
-            AppState.inventoryActivities = inventoryActivities.map(a => ({
-                id: a.id,
-                action: a.action,
-                details: a.details,
-                timestamp: a.timestamp
-            }));
-            
-            const servicesActivities = await API.getServicesActivities();
-            AppState.servicesActivities = servicesActivities.map(a => ({
-                id: a.id,
-                action: a.action,
-                details: a.details,
-                timestamp: a.timestamp
-            }));
-            
-            // Carregar configurações da API
-            const settings = await API.getSettings();
-            if (settings.theme) {
-                AppState.settings.theme = settings.theme;
-            }
-        } catch (error) {
-            console.error('Erro ao carregar dados da API:', error);
-            Toast.show('Erro ao carregar dados. Verifique se o backend está rodando.', 'error');
-        }
+    initializeApp() {
+        // Carregar dados do localStorage
+        StorageManager.load();
+        
+        // Carregar dados de exemplo se vazio
+        SampleData.load();
         
         // Configurar tema
         const themeToggle = document.getElementById('themeToggle');
@@ -414,7 +187,7 @@ const LoginManager = {
             document.documentElement.setAttribute('data-theme', 'light');
         }
 
-        themeToggle.addEventListener('change', async () => {
+        themeToggle.addEventListener('change', () => {
             if (themeToggle.checked) {
                 document.documentElement.setAttribute('data-theme', 'light');
                 AppState.settings.theme = 'light';
@@ -422,8 +195,7 @@ const LoginManager = {
                 document.documentElement.setAttribute('data-theme', 'dark');
                 AppState.settings.theme = 'dark';
             }
-            // Salvar configurações na API
-            await API.saveSettings({ theme: AppState.settings.theme });
+            StorageManager.save();
         });
 
         Navigation.init();
@@ -440,12 +212,11 @@ const LoginManager = {
 };
 
 // ==========================================
-// GERENCIADOR DE ARMAZENAMENTO LOCAL (CACHE)
+// GERENCIADOR DE ARMAZENAMENTO LOCAL
 // ==========================================
-// Este gerenciador salva os dados no localStorage como cache
-// mas o backend é a fonte principal de verdade
+// Este gerenciador salva os dados no localStorage
 const StorageManager = {
-    // Salva estado atual no localStorage (cache local)
+    // Salva estado atual no localStorage
     save() {
         try {
             localStorage.setItem('setorTI', JSON.stringify(AppState));
@@ -454,7 +225,7 @@ const StorageManager = {
         }
     },
 
-    // Carrega dados do localStorage (usado como fallback)
+    // Carrega dados do localStorage
     load() {
         try {
             const data = localStorage.getItem('setorTI');
@@ -502,6 +273,9 @@ const StorageManager = {
     }
 };
 
+// ==========================================
+// SISTEMA DE NOTIFICAÇÕES
+// ==========================================
 const Toast = {
     show(message, type = 'info') {
         const container = document.getElementById('toastContainer');
@@ -530,6 +304,9 @@ const Toast = {
     }
 };
 
+// ==========================================
+// SISTEMA DE MODAIS
+// ==========================================
 const Modal = {
     open(modalId) {
         const modal = document.getElementById(modalId);
@@ -571,6 +348,9 @@ const Modal = {
     }
 };
 
+// ==========================================
+// REGISTRADOR DE ATIVIDADES
+// ==========================================
 const ActivityLogger = {
     log(type, action, details) {
         const activity = {
@@ -649,6 +429,9 @@ const ActivityLogger = {
     }
 };
 
+// ==========================================
+// DASHBOARD
+// ==========================================
 const Dashboard = {
     update() {
         document.getElementById('totalItems').textContent = AppState.inventory.length;
@@ -694,6 +477,9 @@ const Dashboard = {
     }
 };
 
+// ==========================================
+// GERENCIADOR DE ESTOQUE
+// ==========================================
 const Inventory = {
     init() {
         this.setupEventListeners();
@@ -860,6 +646,9 @@ const Inventory = {
     }
 };
 
+// ==========================================
+// GERENCIADOR DE CÓDIGOS (SNIPPETS)
+// ==========================================
 const Snippets = {
     currentViewSnippet: null,
 
@@ -1043,6 +832,9 @@ const Snippets = {
     }
 };
 
+// ==========================================
+// GERENCIADOR DE SERVIÇOS
+// ==========================================
 const Services = {
     currentViewService: null,
 
@@ -1228,6 +1020,9 @@ const Services = {
     }
 };
 
+// ==========================================
+// DADOS DE EXEMPLO
+// ==========================================
 const SampleData = {
     load() {
         if (AppState.inventory.length === 0) {
@@ -1285,11 +1080,9 @@ const SampleData = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar sistema de login
-    LoginManager.init();
-});
-
+// ==========================================
+// NAVEGAÇÃO
+// ==========================================
 const Navigation = {
     init() {
         this.setupEventListeners();
@@ -1357,3 +1150,11 @@ const Navigation = {
         }
     }
 };
+
+// ==========================================
+// INICIALIZAÇÃO
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar sistema de login
+    LoginManager.init();
+});
