@@ -249,24 +249,37 @@ const LoginManager = {
         const password = document.getElementById('loginPassword').value;
 
         try {
-            // Tentar login via API
+            // Tentar login via API primeiro
             const data = await API.login(user, password);
             
-            // Login bem-sucedido
+            // Login bem-sucedido via API
             sessionStorage.setItem('setorTI_logged', 'true');
             this.showApp();
             Toast.show('Login realizado com sucesso!', 'success');
         } catch (error) {
-            // Erro na autenticação
-            let message = 'Usuário ou senha inválidos!';
+            // Se API não estiver disponível, tentar login local
+            console.warn('API não disponível, tentando login local:', error.message);
             
-            if (error.message) {
-                if (error.message.includes('Usuário ou senha')) {
-                    message = error.message;
+            const userCorrect = user === 'Admin';
+            const passwordCorrect = password === 'Administracao@1';
+
+            if (userCorrect && passwordCorrect) {
+                sessionStorage.setItem('setorTI_logged', 'true');
+                this.showApp();
+                Toast.show('Login local realizado com sucesso!', 'success');
+            } else {
+                let message = 'Usuário ou senha inválidos!';
+                
+                if (!userCorrect && !passwordCorrect) {
+                    message = 'O usuário e senha estão errados!!';
+                } else if (!userCorrect) {
+                    message = 'O usuário está errado!!';
+                } else {
+                    message = 'A senha está errada!!';
                 }
+                
+                this.showError(message);
             }
-            
-            this.showError(message);
         }
     },
 
