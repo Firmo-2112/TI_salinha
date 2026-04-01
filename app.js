@@ -1,18 +1,200 @@
+// ==========================================
+// ESTADO DA APLICAÇÃO
+// ==========================================
+// Objeto que armazena todos os dados da aplicação em memória
 const AppState = {
-    inventory: [],
-    snippets: [],
-    services: [],
-    inventoryActivities: [],
-    servicesActivities: [],
+    inventory: [],           // Itens do estoque
+    snippets: [],            // Códigos CMD/PowerShell/Batch
+    services: [],            // Serviços/atividades
+    inventoryActivities: [], // Histórico de atividades do estoque
+    servicesActivities: [],  // Histórico de atividades dos serviços
     settings: {
-        theme: 'dark'
-    }
+        theme: 'dark'        // Tema atual (dark/light)
+    },
+    token: null              // Token JWT para autenticação na API
 };
 
-// Credenciais de login
-const LOGIN_CREDENTIALS = {
-    user: 'Admin',
-    password: 'Administracao@1'
+// ==========================================
+// CONFIGURAÇÃO DA API
+// ==========================================
+// URL base da API backend (ajuste se necessário)
+const API_BASE_URL = 'http://localhost:3000/api';
+
+// ==========================================
+// GERENCIADOR DE API
+// ==========================================
+// Objeto responsável por todas as comunicações com o backend
+const API = {
+    // Define o token de autenticação para as requisições
+    setAuthHeader(headers) {
+        if (AppState.token) {
+            headers['Authorization'] = 'Bearer ' + AppState.token;
+        }
+        return headers;
+    },
+
+    // Faz uma requisição HTTP para a API
+    async request(endpoint, options = {}) {
+        const url = API_BASE_URL + endpoint;
+        const headers = this.setAuthHeader(options.headers || {});
+        headers['Content-Type'] = 'application/json';
+
+        try {
+            const response = await fetch(url, { ...options, headers });
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Erro na requisição');
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('Erro na API:', error);
+            throw error;
+        }
+    },
+
+    // ==========================================
+    // MÉTODOS DE AUTENTICAÇÃO
+    // ==========================================
+    
+    // Realiza login na API
+    async login(username, password) {
+        const data = await this.request('/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
+        AppState.token = data.token;
+        return data;
+    },
+
+    // ==========================================
+    // MÉTODOS DE INVENTÁRIO
+    // ==========================================
+    
+    // Busca todos os items do estoque na API
+    async getInventory() {
+        return await this.request('/inventory');
+    },
+
+    // Adiciona um novo item ao estoque via API
+    async addInventoryItem(item) {
+        return await this.request('/inventory', {
+            method: 'POST',
+            body: JSON.stringify(item)
+        });
+    },
+
+    // Atualiza um item existente no estoque via API
+    async updateInventoryItem(id, item) {
+        return await this.request('/inventory/' + id, {
+            method: 'PUT',
+            body: JSON.stringify(item)
+        });
+    },
+
+    // Exclui um item do estoque via API
+    async deleteInventoryItem(id) {
+        return await this.request('/inventory/' + id, { method: 'DELETE' });
+    },
+
+    // ==========================================
+    // MÉTODOS DE SNIPPETS (CÓDIGOS)
+    // ==========================================
+    
+    // Busca todos os snippets na API
+    async getSnippets() {
+        return await this.request('/snippets');
+    },
+
+    // Adiciona um novo snippet via API
+    async addSnippet(snippet) {
+        return await this.request('/snippets', {
+            method: 'POST',
+            body: JSON.stringify(snippet)
+        });
+    },
+
+    // Atualiza um snippet existente via API
+    async updateSnippet(id, snippet) {
+        return await this.request('/snippets/' + id, {
+            method: 'PUT',
+            body: JSON.stringify(snippet)
+        });
+    },
+
+    // Exclui um snippet via API
+    async deleteSnippet(id) {
+        return await this.request('/snippets/' + id, { method: 'DELETE' });
+    },
+
+    // ==========================================
+    // MÉTODOS DE SERVIÇOS
+    // ==========================================
+    
+    // Busca todos os serviços na API
+    async getServices() {
+        return await this.request('/services');
+    },
+
+    // Adiciona um novo serviço via API
+    async addService(service) {
+        return await this.request('/services', {
+            method: 'POST',
+            body: JSON.stringify(service)
+        });
+    },
+
+    // Atualiza um serviço existente via API
+    async updateService(id, service) {
+        return await this.request('/services/' + id, {
+            method: 'PUT',
+            body: JSON.stringify(service)
+        });
+    },
+
+    // Marca um serviço como concluído via API
+    async completeService(id) {
+        return await this.request('/services/' + id + '/complete', {
+            method: 'PATCH'
+        });
+    },
+
+    // Exclui um serviço via API
+    async deleteService(id) {
+        return await this.request('/services/' + id, { method: 'DELETE' });
+    },
+
+    // ==========================================
+    // MÉTODOS DE ATIVIDADES
+    // ==========================================
+    
+    // Busca atividades do inventário na API
+    async getInventoryActivities() {
+        return await this.request('/activities/inventory');
+    },
+
+    // Busca atividades dos serviços na API
+    async getServicesActivities() {
+        return await this.request('/activities/services');
+    },
+
+    // ==========================================
+    // MÉTODOS DE CONFIGURAÇÕES
+    // ==========================================
+    
+    // Busca configurações na API
+    async getSettings() {
+        return await this.request('/settings');
+    },
+
+    // Salva configurações na API
+    async saveSettings(settings) {
+        return await this.request('/settings', {
+            method: 'PUT',
+            body: JSON.stringify(settings)
+        });
+    }
 };
 
 // Gerenciador de Login
@@ -170,55 +352,46 @@ const LoginManager = {
         this.initializeApp();
     },
 
-    initializeApp() {
-        // Carregar dados
-        StorageManager.load();
-        
-        // Limpar serviços e estoque, mantendo apenas os códigos
-        AppState.services = [];
-        AppState.inventory = [];
-        AppState.inventoryActivities = [];
-        AppState.servicesActivities = [];
-        
-        // Carregar apenas os códigos se necessário
-        if (AppState.snippets.length === 0 || AppState.snippets.length < 30) {
-            // Carregar os 30 códigos padrão
-            AppState.snippets = [
-                { id: '1', title: 'Limpar Cache DNS', category: 'rede', type: 'cmd', tags: 'dns, cache, rede', description: 'Limpa o cache de DNS do Windows', code: 'ipconfig /flushdns', createdAt: new Date().toISOString() },
-                { id: '2', title: 'Verificar Integridade do Sistema', category: 'sistema', type: 'cmd', tags: 'sistema, reparo, sfc', description: 'Verifica e repara arquivos do sistema Windows', code: 'sfc /scannow', createdAt: new Date().toISOString() },
-                { id: '3', title: 'Listar Processos', category: 'sistema', type: 'powershell', tags: 'processos, sistema', description: 'Lista processos em execução ordenados por memória', code: 'Get-Process | Sort-Object WS -Descending | Select-Object -First 10 Name, Id, WS, CPU', createdAt: new Date().toISOString() },
-                { id: '4', title: 'Resetar Configurações de Rede', category: 'rede', type: 'batch', tags: 'rede, reset, tcp', description: 'Script para resetar configurações de rede', code: '@echo off\nipconfig /release\nipconfig /renew\nipconfig /flushdns\nnetsh winsock reset\nnetsh int ip reset\necho Concluido!\npause', createdAt: new Date().toISOString() },
-                { id: '5', title: 'Verificar Espaço em Disco', category: 'sistema', type: 'cmd', tags: 'disco, espaço', description: 'Mostra espaço disponível em disco', code: 'wmic logicaldisk get size,freespace,caption', createdAt: new Date().toISOString() },
-                { id: '6', title: 'Liberar IP', category: 'rede', type: 'cmd', tags: 'ip, rede, dhcp', description: 'Libera e renova endereço IP', code: 'ipconfig /release\nipconfig /renew', createdAt: new Date().toISOString() },
-                { id: '7', title: 'Verificar Drivers de Impressora', category: 'impressora', type: 'powershell', tags: 'impressora, driver', description: 'Lista drivers de impressora instalados', code: 'Get-PrinterDriver | Select-Object Name, Manufacturer, Version', createdAt: new Date().toISOString() },
-                { id: '8', title: 'Limpar Fila de Impressão', category: 'impressora', type: 'batch', tags: 'impressora, fila, spooler', description: 'Para e reinicia o spooler de impressão', code: 'net stop spooler\ndel /Q /F %systemroot%\\System32\\spool\\printers\\*\nnet start spooler\necho Fila de impressao limpa!\npause', createdAt: new Date().toISOString() },
-                { id: '9', title: 'Testar Conexão de Rede', category: 'rede', type: 'cmd', tags: 'rede, ping, teste', description: 'Testa conectividade de rede', code: 'ping 8.8.8.8 -n 4\nping google.com -n 4', createdAt: new Date().toISOString() },
-                { id: '10', title: 'Verificar Temperatura do Sistema', category: 'sistema', type: 'powershell', tags: 'temperatura, hardware', description: 'Verifica temperatura do processador', code: 'Get-WmiObject MSAcpi_ThermalZoneTemperature -Namespace "root/wmi" | ForEach-Object { $temp = ($_.CurrentTemperature - 2732) / 10; Write-Host "Temperatura: $temp °C" }', createdAt: new Date().toISOString() },
-                { id: '11', title: 'Configurar Impressora Padrão', category: 'impressora', type: 'powershell', tags: 'impressora, padrao', description: 'Define impressora como padrão', code: 'Get-Printer -Name "Nome da Impressora" | Set-Printer -Shared $true', createdAt: new Date().toISOString() },
-                { id: '12', title: 'Verificar Portas de Rede', category: 'rede', type: 'cmd', tags: 'portas, rede, netstat', description: 'Lista portas de rede abertas', code: 'netstat -an | findstr LISTENING', createdAt: new Date().toISOString() },
-                { id: '13', title: 'Reparar Imagem do Windows', category: 'sistema', type: 'cmd', tags: 'sistema, dism, reparo', description: 'Repara imagem do Windows usando DISM', code: 'DISM /Online /Cleanup-Image /RestoreHealth', createdAt: new Date().toISOString() },
-                { id: '14', title: 'Listar Serviços do Windows', category: 'sistema', type: 'cmd', tags: 'servicos, sistema', description: 'Lista todos os serviços do Windows', code: 'sc query type= service state= all', createdAt: new Date().toISOString() },
-                { id: '15', title: 'Verificar Ativação do Windows', category: 'sistema', type: 'cmd', tags: 'ativacao, windows, licença', description: 'Verifica status de ativação do Windows', code: 'slmgr /xpr', createdAt: new Date().toISOString() },
-                { id: '16', title: 'Reiniciar Spooler de Impressão', category: 'impressora', type: 'cmd', tags: 'impressora, spooler, reiniciar', description: 'Reinicia o serviço de spooler', code: 'net stop spooler\nnet start spooler', createdAt: new Date().toISOString() },
-                { id: '17', title: 'Listar Impressoras Instaladas', category: 'impressora', type: 'cmd', tags: 'impressora, listar', description: 'Lista todas as impressoras instaladas', code: 'wmic printer get name,portname', createdAt: new Date().toISOString() },
-                { id: '18', title: 'Testar Porta de Impressora', category: 'impressora', type: 'powershell', tags: 'impressora, porta, teste', description: 'Testa conectividade com porta de impressora', code: 'Test-NetConnection -ComputerName 192.168.1.100 -Port 9100', createdAt: new Date().toISOString() },
-                { id: '19', title: 'Verificar Tabela de Roteamento', category: 'rede', type: 'cmd', tags: 'rede, rota, tabela', description: 'Mostra tabela de roteamento do Windows', code: 'route print', createdAt: new Date().toISOString() },
-                { id: '20', title: 'Liberar e Renovar IP Completo', category: 'rede', type: 'batch', tags: 'ip, dhcp, rede', description: 'Script completo para renovar IP', code: '@echo off\necho Liberando IP...\nipconfig /release\necho Renovando IP...\nipconfig /renew\necho Limpando DNS...\nipconfig /flushdns\necho Concluido!\npause', createdAt: new Date().toISOString() },
-                { id: '21', title: 'Verificar Adaptadores de Rede', category: 'rede', type: 'cmd', tags: 'rede, adaptador, placa', description: 'Mostra todas as interfaces de rede', code: 'ipconfig /all', createdAt: new Date().toISOString() },
-                { id: '22', title: 'Limpar Arquivos Temporários', category: 'sistema', type: 'batch', tags: 'limpeza, temporario, disco', description: 'Limpa arquivos temporários do sistema', code: '@echo off\ndel /q /f %temp%\\*\nrd /s /q %temp%\necho Arquivos temporarios limpos!\npause', createdAt: new Date().toISOString() },
-                { id: '23', title: 'Verificar Uso de Disco', category: 'sistema', type: 'powershell', tags: 'disco, uso, armazenamento', description: 'Mostra uso de espaço em disco', code: 'Get-WmiObject -Class Win32_LogicalDisk | Select-Object DeviceID, @{Name="Size(GB)";Expression={[math]::Round($_.Size/1GB,2)}}, @{Name="Free(GB)";Expression={[math]::Round($_.FreeSpace/1GB,2)}}', createdAt: new Date().toISOString() },
-                { id: '24', title: 'Resetar Pilha TCP/IP', category: 'rede', type: 'cmd', tags: 'rede, tcp/ip, reset', description: 'Reseta configurações TCP/IP', code: 'netsh int ip reset\nnetsh winsock reset', createdAt: new Date().toISOString() },
-                { id: '25', title: 'Verificar Eventos de Erro', category: 'sistema', type: 'powershell', tags: 'evento, erro, log', description: 'Lista últimos erros do sistema', code: 'Get-EventLog -LogName System -EntryType Error -Newest 10 | Format-Table TimeGenerated, Source, Message -AutoSize', createdAt: new Date().toISOString() },
-                { id: '26', title: 'Testar Velocidade de Rede', category: 'rede', type: 'powershell', tags: 'rede, velocidade, teste', description: 'Testa latência de rede', code: 'Measure-Command { ping -n 10 8.8.8.8 }', createdAt: new Date().toISOString() },
-                { id: '27', title: 'Remover Impressora por Nome', category: 'impressora', type: 'powershell', tags: 'impressora, remover, excluir', description: 'Remove impressora específica', code: 'Remove-Printer -Name "Nome da Impressora"', createdAt: new Date().toISOString() },
-                { id: '28', title: 'Verificar Memória RAM', category: 'sistema', type: 'cmd', tags: 'memoria, ram, hardware', description: 'Mostra informações da memória RAM', code: 'wmic memorychip get capacity,speed,manufacturer', createdAt: new Date().toISOString() },
-                { id: '29', title: 'Mapear Unidade de Rede', category: 'rede', type: 'cmd', tags: 'rede, mapear, unidade', description: 'Mapeia pasta de rede como unidade', code: 'net use Z: \\\\servidor\\pasta /persistent:yes', createdAt: new Date().toISOString() },
-                { id: '30', title: 'Verificar Saúde do Disco', category: 'sistema', type: 'powershell', tags: 'disco, saude, smart', description: 'Verifica saúde do disco via SMART', code: 'Get-PhysicalDisk | Select-Object FriendlyName, HealthStatus, OperationalStatus', createdAt: new Date().toISOString() }
-            ];
+    async initializeApp() {
+        // Carregar dados da API
+        try {
+            // Carregar inventário da API
+            AppState.inventory = await API.getInventory();
+            
+            // Carregar snippets da API
+            AppState.snippets = await API.getSnippets();
+            
+            // Carregar serviços da API
+            AppState.services = await API.getServices();
+            
+            // Carregar atividades da API
+            const inventoryActivities = await API.getInventoryActivities();
+            AppState.inventoryActivities = inventoryActivities.map(a => ({
+                id: a.id,
+                action: a.action,
+                details: a.details,
+                timestamp: a.timestamp
+            }));
+            
+            const servicesActivities = await API.getServicesActivities();
+            AppState.servicesActivities = servicesActivities.map(a => ({
+                id: a.id,
+                action: a.action,
+                details: a.details,
+                timestamp: a.timestamp
+            }));
+            
+            // Carregar configurações da API
+            const settings = await API.getSettings();
+            if (settings.theme) {
+                AppState.settings.theme = settings.theme;
+            }
+        } catch (error) {
+            console.error('Erro ao carregar dados da API:', error);
+            Toast.show('Erro ao carregar dados. Verifique se o backend está rodando.', 'error');
         }
         
-        StorageManager.save();
-
+        // Configurar tema
         const themeToggle = document.getElementById('themeToggle');
         
         if (AppState.settings.theme === 'light') {
@@ -226,7 +399,7 @@ const LoginManager = {
             document.documentElement.setAttribute('data-theme', 'light');
         }
 
-        themeToggle.addEventListener('change', () => {
+        themeToggle.addEventListener('change', async () => {
             if (themeToggle.checked) {
                 document.documentElement.setAttribute('data-theme', 'light');
                 AppState.settings.theme = 'light';
@@ -234,7 +407,8 @@ const LoginManager = {
                 document.documentElement.setAttribute('data-theme', 'dark');
                 AppState.settings.theme = 'dark';
             }
-            StorageManager.save();
+            // Salvar configurações na API
+            await API.saveSettings({ theme: AppState.settings.theme });
         });
 
         Navigation.init();
@@ -250,7 +424,13 @@ const LoginManager = {
     }
 };
 
+// ==========================================
+// GERENCIADOR DE ARMAZENAMENTO LOCAL (CACHE)
+// ==========================================
+// Este gerenciador salva os dados no localStorage como cache
+// mas o backend é a fonte principal de verdade
 const StorageManager = {
+    // Salva estado atual no localStorage (cache local)
     save() {
         try {
             localStorage.setItem('setorTI', JSON.stringify(AppState));
@@ -259,6 +439,7 @@ const StorageManager = {
         }
     },
 
+    // Carrega dados do localStorage (usado como fallback)
     load() {
         try {
             const data = localStorage.getItem('setorTI');
