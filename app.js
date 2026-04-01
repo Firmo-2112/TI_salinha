@@ -244,26 +244,28 @@ const LoginManager = {
         }
     },
 
-    handleLogin() {
+    async handleLogin() {
         const user = document.getElementById('loginUser').value.trim();
         const password = document.getElementById('loginPassword').value;
 
-        const userCorrect = user === LOGIN_CREDENTIALS.user;
-        const passwordCorrect = password === LOGIN_CREDENTIALS.password;
-
-        if (userCorrect && passwordCorrect) {
+        try {
+            // Tentar login via API
+            const data = await API.login(user, password);
+            
+            // Login bem-sucedido
             sessionStorage.setItem('setorTI_logged', 'true');
             this.showApp();
             Toast.show('Login realizado com sucesso!', 'success');
-        } else {
-            let message = '';
-            if (!userCorrect && !passwordCorrect) {
-                message = 'O usuário e senha estão errados!!';
-            } else if (!userCorrect) {
-                message = 'O usuário está errado!!';
-            } else {
-                message = 'A senha está errada!!';
+        } catch (error) {
+            // Erro na autenticação
+            let message = 'Usuário ou senha inválidos!';
+            
+            if (error.message) {
+                if (error.message.includes('Usuário ou senha')) {
+                    message = error.message;
+                }
             }
+            
             this.showError(message);
         }
     },
