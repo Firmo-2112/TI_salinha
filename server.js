@@ -110,25 +110,6 @@ function initializeDatabase() {
             data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
-        -- Índices
-        CREATE INDEX IF NOT EXISTS idx_estoque_categoria ON estoque_itens(categoria);
-        CREATE INDEX IF NOT EXISTS idx_estoque_ativo ON estoque_itens(ativo);
-        CREATE INDEX IF NOT EXISTS idx_snippets_categoria ON snippets(categoria);
-        CREATE INDEX IF NOT EXISTS idx_snippets_tipo ON snippets(tipo);
-        CREATE INDEX IF NOT EXISTS idx_snippets_ativo ON snippets(ativo);
-        CREATE INDEX IF NOT EXISTS idx_servicos_status ON servicos(status);
-        CREATE INDEX IF NOT EXISTS idx_servicos_prioridade ON servicos(prioridade);
-        CREATE INDEX IF NOT EXISTS idx_atividades_tipo ON atividades(tipo);
-        CREATE INDEX IF NOT EXISTS idx_atividades_data ON atividades(data_atividade);
-
-        -- View para Dashboard
-        CREATE VIEW IF NOT EXISTS dashboard_resumo AS
-        SELECT 
-            (SELECT COUNT(*) FROM estoque_itens WHERE ativo = TRUE) as total_itens_estoque,
-            (SELECT COUNT(*) FROM estoque_itens WHERE ativo = TRUE AND quantidade <= estoque_minimo) as itens_estoque_baixo,
-            (SELECT COUNT(*) FROM snippets WHERE ativo = TRUE) as total_snippets,
-            (SELECT COUNT(*) FROM servicos WHERE status = 'pending') as servicos_pendentes,
-            (SELECT COUNT(*) FROM servicos WHERE status = 'completed') as servicos_concluidos;
     `;
 
     db.exec(createTables, (err) => {
