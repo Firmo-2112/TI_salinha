@@ -563,15 +563,18 @@ const Inventory = {
         Modal.open('itemModal');
     },
 
-    openEditModal(id) {
-        const item = AppState.inventory.find(i => i.id == id);
+    async openEditModal(id) {
+        let item = AppState.inventory.find(i => i.id == id);
+        if (!item && AppState.useDatabase) {
+            item = await API.getEstoqueItem(id);
+        }
         if (!item) return;
 
         document.getElementById('itemModalTitle').textContent = 'Editar Item';
         document.getElementById('itemId').value = item.id;
         document.getElementById('itemName').value = item.nome || item.name;
         document.getElementById('itemCategory').value = item.categoria || item.category;
-        document.getElementById('itemQuantity').value = item.quantidade || item.quantity;
+        document.getElementById('itemQuantity').value = item.quantidade !== undefined ? item.quantidade : (item.quantity || 0);
         document.getElementById('itemMinStock').value = item.estoque_minimo || item.minStock || 5;
         document.getElementById('itemLocation').value = item.localizacao || item.location || '';
         document.getElementById('itemDescription').value = item.descricao || item.description || '';
@@ -688,28 +691,27 @@ const Inventory = {
         const emptyState = document.getElementById('inventoryEmpty');
         const table = document.getElementById('inventoryTable');
 
+        let items = [];
+
         if (AppState.useDatabase) {
-            AppState.inventory = await API.getEstoque(searchTerm, categoryFilter);
+            items = await API.getEstoque(searchTerm, categoryFilter);
+            AppState.inventory = items;
         } else {
-            let items = [...AppState.inventory];
+            items = [...AppState.inventory];
 
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 items = items.filter(item => 
-                    (item.nome || item.name).toLowerCase().includes(term) ||
-                    (item.descricao || item.description).toLowerCase().includes(term) ||
-                    (item.localizacao || item.location).toLowerCase().includes(term)
+                    (item.nome || item.name || '').toLowerCase().includes(term) ||
+                    (item.descricao || item.description || '').toLowerCase().includes(term) ||
+                    (item.localizacao || item.location || '').toLowerCase().includes(term)
                 );
             }
 
             if (categoryFilter) {
                 items = items.filter(item => (item.categoria || item.category) === categoryFilter);
             }
-
-            AppState.inventory = items;
         }
-
-        let items = AppState.inventory;
 
         if (items.length === 0) {
             table.style.display = 'none';
@@ -933,18 +935,21 @@ const Snippets = {
         const grid = document.getElementById('snippetsGrid');
         const emptyState = document.getElementById('snippetsEmpty');
 
+        let snippets = [];
+
         if (AppState.useDatabase) {
-            AppState.snippets = await API.getSnippets(searchTerm, categoryFilter, typeFilter);
+            snippets = await API.getSnippets(searchTerm, categoryFilter, typeFilter);
+            AppState.snippets = snippets;
         } else {
-            let snippets = [...AppState.snippets];
+            snippets = [...AppState.snippets];
 
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 snippets = snippets.filter(snippet => 
-                    (snippet.titulo || snippet.title).toLowerCase().includes(term) ||
-                    (snippet.descricao || snippet.description).toLowerCase().includes(term) ||
-                    (snippet.tags).toLowerCase().includes(term) ||
-                    (snippet.codigo || snippet.code).toLowerCase().includes(term)
+                    (snippet.titulo || snippet.title || '').toLowerCase().includes(term) ||
+                    (snippet.descricao || snippet.description || '').toLowerCase().includes(term) ||
+                    (snippet.tags || '').toLowerCase().includes(term) ||
+                    (snippet.codigo || snippet.code || '').toLowerCase().includes(term)
                 );
             }
 
@@ -955,11 +960,7 @@ const Snippets = {
             if (typeFilter) {
                 snippets = snippets.filter(snippet => (snippet.tipo || snippet.type) === typeFilter);
             }
-
-            AppState.snippets = snippets;
         }
-
-        let snippets = AppState.snippets;
 
         if (snippets.length === 0) {
             grid.style.display = 'none';
@@ -1168,31 +1169,30 @@ const Services = {
         const list = document.getElementById('servicesList');
         const emptyState = document.getElementById('servicesEmpty');
 
+        let services = [];
+
         if (AppState.useDatabase) {
-            AppState.services = await API.getServicos(searchTerm, statusFilter);
+            services = await API.getServicos(searchTerm, statusFilter);
+            AppState.services = services;
         } else {
-            let services = [...AppState.services];
+            services = [...AppState.services];
 
             services.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
 
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 services = services.filter(service => 
-                    (service.titulo || service.title).toLowerCase().includes(term) ||
-                    (service.descricao || service.description).toLowerCase().includes(term) ||
-                    (service.cliente_setor || service.client).toLowerCase().includes(term) ||
-                    (service.relatorio || service.report).toLowerCase().includes(term)
+                    (service.titulo || service.title || '').toLowerCase().includes(term) ||
+                    (service.descricao || service.description || '').toLowerCase().includes(term) ||
+                    (service.cliente_setor || service.client || '').toLowerCase().includes(term) ||
+                    (service.relatorio || service.report || '').toLowerCase().includes(term)
                 );
             }
 
             if (statusFilter) {
                 services = services.filter(service => service.status === statusFilter);
             }
-
-            AppState.services = services;
         }
-
-        let services = AppState.services;
 
         if (services.length === 0) {
             list.style.display = 'none';

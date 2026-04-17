@@ -3,7 +3,7 @@
 // Módulo para comunicação com o backend
 // ==========================================
 
-const API_BASE_URL = 'http://localhost:3306/api';
+const API_BASE_URL = '/api';
 
 const API = {
     // ==========================================
