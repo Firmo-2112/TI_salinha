@@ -131,16 +131,29 @@ INSERT INTO estoque_itens (nome, categoria, quantidade, estoque_minimo, localiza
 -- Snippets de exemplo
 INSERT INTO snippets (titulo, categoria, tipo, tags, descricao, codigo) VALUES
 ('Limpar Cache DNS', 'rede', 'cmd', 'dns, cache, rede', 'Limpa o cache de DNS do Windows', 'ipconfig /flushdns'),
-('Verificar Integridade do Sistema', 'sistema', 'cmd', 'sistema, reparo, sfc', 'Verifica e repara arquivos do sistema Windows', 'sfc /scannow'),
-('Listar Processos', 'sistema', 'powershell', 'processos, sistema', 'Lista processos em execução ordenados por memória', 'Get-Process | Sort-Object WS -Descending | Select-Object -First 10 Name, Id, WS, CPU'),
-('Resetar Configurações de Rede', 'rede', 'batch', 'rede, reset, tcp', 'Script para resetar configurações de rede', '@echo off
-ipconfig /release
-ipconfig /renew
-ipconfig /flushdns
-netsh winsock reset
-netsh int ip reset
-echo Concluido!
-pause');
+('Ver Configuracoes de Rede', 'rede', 'cmd', 'rede, ip', 'Exibe todas as configuracoes de rede detalhadas', 'ipconfig /all'),
+('Testar Conexao Ping Continuo', 'rede', 'cmd', 'ping, gateway, rede', 'Pinga continuamente o gateway para testar conectividade', 'ping 192.168.1.1 -t'),
+('Tracar Rota de Rede', 'rede', 'cmd', 'tracert, rota, rede', 'Rastreia o caminho dos pacotes ate um destino', 'tracert google.com'),
+('Ver Tabela ARP', 'rede', 'cmd', 'arp, mac, rede', 'Exibe a tabela ARP IP x MAC da maquina', 'arp -a'),
+('Ver Portas em Uso', 'rede', 'cmd', 'netstat, portas, rede', 'Lista todas as conexoes ativas e portas em uso', 'netstat -ano'),
+('Consultar DNS de Dominio', 'rede', 'cmd', 'nslookup, dns', 'Consulta informacoes de DNS de um dominio', 'nslookup google.com'),
+('Verificar Integridade do Sistema', 'sistema', 'cmd', 'sfc, sistema, reparo', 'Verifica e repara arquivos corrompidos do sistema Windows', 'sfc /scannow'),
+('Verificar Espaco em Disco', 'sistema', 'cmd', 'disco, espaco, wmic', 'Exibe espaco total e disponivel em todos os discos', 'wmic logicaldisk get caption,size,freespace'),
+('Ver Informacoes do Sistema', 'sistema', 'cmd', 'sistema, info, hardware', 'Exibe informacoes completas do sistema operacional', 'systeminfo'),
+('Reiniciar Computador', 'sistema', 'cmd', 'reiniciar, shutdown', 'Reinicia o computador imediatamente', 'shutdown /r /t 0'),
+('Desligar Computador', 'sistema', 'cmd', 'desligar, shutdown', 'Desliga o computador imediatamente', 'shutdown /s /t 0'),
+('Reparar Disco com DISM', 'sistema', 'cmd', 'dism, reparo, windows', 'Repara a imagem do Windows com DISM - executar como Admin', 'DISM /Online /Cleanup-Image /RestoreHealth'),
+('Ver Usuarios Logados', 'sistema', 'cmd', 'usuarios, sessao, logon', 'Lista todos os usuarios com sessao ativa', 'query user'),
+('Verificar Versao do Windows', 'sistema', 'cmd', 'versao, windows', 'Exibe a versao exata do Windows instalado', 'winver'),
+('Listar Processos por Memoria', 'sistema', 'powershell', 'processos, memoria, desempenho', 'Lista os 10 processos que mais consomem memoria RAM', 'Get-Process | Sort-Object WS -Descending | Select-Object -First 10 Name, Id, WS, CPU'),
+('Listar Programas Instalados', 'sistema', 'powershell', 'programas, instalados, inventario', 'Lista todos os programas instalados com versao', 'Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher | Sort-Object DisplayName | Format-Table -AutoSize'),
+('Ver Log de Eventos de Erros', 'sistema', 'powershell', 'log, eventos, erros, auditoria', 'Exibe os ultimos 20 erros criticos do sistema', 'Get-EventLog -LogName System -EntryType Error -Newest 20 | Format-Table TimeGenerated, Source, Message -AutoSize'),
+('Reiniciar Servico do Windows', 'sistema', 'powershell', 'servico, reiniciar, service', 'Reinicia um servico especifico do Windows', 'Restart-Service -Name "Spooler" -Force'),
+('Listar Discos e Particoes', 'sistema', 'powershell', 'disco, particao, storage', 'Lista todos os discos fisicos e particoes', 'Get-Disk | Format-Table Number, FriendlyName, Size, HealthStatus'),
+('Reiniciar Spooler de Impressao', 'impressora', 'cmd', 'spooler, impressora, reiniciar, fila', 'Para e reinicia o spooler para resolver filas travadas', 'net stop spooler & del /Q /F /S "%systemroot%\System32\spool\PRINTERS\*.*" & net start spooler'),
+('Listar Impressoras Instaladas', 'impressora', 'powershell', 'impressoras, listar, inventario', 'Lista todas as impressoras instaladas e seus status', 'Get-Printer | Select-Object Name, DriverName, PortName, PrinterStatus | Format-Table -AutoSize'),
+('Definir Impressora Padrao', 'impressora', 'powershell', 'impressora, padrao', 'Define uma impressora como padrao', '(New-Object -ComObject WScript.Network).SetDefaultPrinter("Nome da Impressora")');
+
 
 -- Serviços de exemplo
 INSERT INTO servicos (titulo, cliente_setor, prioridade, data_servico, descricao, relatorio, status) VALUES
