@@ -663,3 +663,7 @@ app.get('/api/exportar', (req, res) => {
 // ==========================================
 // INICIAR SERVIDOR
 // ==========================================
+app.listen(PORT, () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log('API REST para Setor de TI está pronta!');
+});
